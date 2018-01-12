@@ -26,8 +26,30 @@ func main() {
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 
-	setupRabbitMqTopicsAndQueues(ch, "queries", "fakedata.queries")
+	rabbitArtifacts := setupRabbitMqTopicsAndQueues(ch, "queries", "fakedata.queries")
 
+	msgs, consumeErr := ch.Consume(
+		rabbitArtifacts.queriesQueueName,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	failOnError(consumeErr, "failed to consume messages from queue")
+
+	forever := make(chan bool)
+
+	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	go func() {
+		for msg := range msgs {
+			fmt.Println(string(msg.Body))
+			msg.Ack(false)
+		}
+	}()
+
+	<-forever
 	defer ch.Close()
 	defer conn.Close()
 }
