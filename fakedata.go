@@ -9,12 +9,30 @@ import (
 
 type rabbitConf struct {
 	hostname string
-	port int
+	port     int
 	username string
 	password string
 }
 
-func readRabbitConf() (rabbitConf) {
+type rabbitArtifacts struct {
+	queriesExchangeName string
+	queriesQueueName    string
+}
+
+func main() {
+	rabbitConfig := readRabbitConf()
+	conn := connectRabbit(rabbitConfig)
+
+	ch, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+
+	setupRabbitMqTopicsAndQueues(ch, "queries", "fakedata.queries")
+
+	defer ch.Close()
+	defer conn.Close()
+}
+
+func readRabbitConf() rabbitConf {
 	viper.SetConfigFile("config.properties")
 	viper.SetConfigType("properties")
 
@@ -28,7 +46,7 @@ func readRabbitConf() (rabbitConf) {
 	username := viper.GetString("rabbitmq.username")
 	password := viper.GetString("rabbitmq.password")
 
-	return rabbitConf{hostname: hostname, port: port, username: username, password:password}
+	return rabbitConf{hostname: hostname, port: port, username: username, password: password}
 }
 
 func connectRabbit(conf rabbitConf) *amqp.Connection {
@@ -38,11 +56,27 @@ func connectRabbit(conf rabbitConf) *amqp.Connection {
 	return conn
 }
 
-func main() {
-	rabbitConfig := readRabbitConf()
-	conn := connectRabbit(rabbitConfig)
+func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName string, queriesQueueName string) rabbitArtifacts {
+	exchangeErr := channel.ExchangeDeclare(queriesExchangeName, "topic", true, false, false, false, nil)
+	failOnError(exchangeErr, "failed to declare queries exchange")
 
-	defer conn.Close()
+	_, queriesErr := channel.QueueDeclare(
+		queriesQueueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	failOnError(queriesErr, "Failed to declare queries queue")
+
+	//TODO make configurable by users input data
+	bindErr := channel.QueueBind(queriesQueueName, "profiles.all", queriesExchangeName, false, nil)
+	failOnError(bindErr, "Failed to bind queries queue to topic exchange")
+
+	fmt.Println(fmt.Sprintf("created topics and queues %s, %s", queriesQueueName, queriesExchangeName))
+
+	return rabbitArtifacts{queriesExchangeName: queriesExchangeName, queriesQueueName: queriesQueueName}
 }
 
 func failOnError(err error, msg string) {
