@@ -19,6 +19,11 @@ Simply call
 go get github.com/rjayasinghe/fakedata
 ```
 
+or get the base docker image to extend it:
+```
+docker pull rjayasinghe/fakedata
+```
+
 or clone the repository and call
 ```
 go build fakedata.go
@@ -37,4 +42,4 @@ inheriting from the base image defined in this repository.
 
 ## TODO
 * Tests ;-)
-* Publish the base image at hub.docker.com (image name is subject for change)
+* Improve default configuration settings in case of missing config properties
