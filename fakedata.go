@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"time"
 )
 
 type rabbitConf struct {
@@ -135,10 +136,16 @@ func readRabbitConf() rabbitConf {
 }
 
 func connectRabbit(conf rabbitConf) *amqp.Connection {
-	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", conf.username, conf.password, conf.hostname, conf.port))
-	failOnError(err, "failed to connect to rabbitmq")
-	log.Println("connected to rabbitmq")
-	return conn
+	for {
+		conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", conf.username, conf.password, conf.hostname, conf.port))
+		if err == nil && conn != nil {
+			log.Println("connected to rabbitmq")
+			return conn
+		} else {
+			logOnError(err, "failed to connect to rabbitmq will retry in ")
+			time.Sleep(1000)
+		}
+	}
 }
 
 func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
