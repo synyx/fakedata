@@ -19,6 +19,7 @@ type rabbitConf struct {
 	queriesExchange   string
 	queriesQueue      string
 	queriesRoutingKey string
+	timeout 		  time.Duration
 }
 
 type rabbitArtifacts struct {
@@ -118,16 +119,19 @@ func readRabbitConf() rabbitConf {
 	port := viper.GetInt("rabbitmq.port")
 	username := viper.GetString("rabbitmq.username")
 	password := viper.GetString("rabbitmq.password")
+	timeout := viper.GetString("rabbitmq.timeout")
 	filename := viper.GetString("filename")
 	queriesExchange := viper.GetString("rabbitmq.queries.exchange")
 	queriesQueue := viper.GetString("rabbitmq.queries.exchange")
 	queriesRoutingKey := viper.GetString("rabbitmq.queries.routingkey")
-
+	timeoutDuration, err := time.ParseDuration(timeout)
+	failOnError(err, "failed to parse rabbitmq timeout configuration value")
 	return rabbitConf{
 		hostname: hostname,
 		port: port,
 		username: username,
 		password: password,
+		timeout: timeoutDuration,
 		filename: filename,
 		queriesExchange: queriesExchange,
 		queriesQueue: queriesQueue,
@@ -142,8 +146,8 @@ func connectRabbit(conf rabbitConf) *amqp.Connection {
 			log.Println("connected to rabbitmq")
 			return conn
 		} else {
-			logOnError(err, "failed to connect to rabbitmq will retry in ")
-			time.Sleep(1000)
+			log.Println(fmt.Sprintf("failed to connect to rabbitmq will retry in %d. current cause: %s", conf.timeout, err))
+			time.Sleep(conf.timeout)
 		}
 	}
 }
