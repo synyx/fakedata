@@ -112,6 +112,14 @@ func readRabbitConf() rabbitConf {
 	viper.SetConfigFile("config.properties")
 	viper.SetConfigType("properties")
 
+	//default values suitable for vanilla rabbitmq docker container
+	viper.SetDefault("rabbitmq.hostname", "localhost")
+	viper.SetDefault("rabbitmq.port", "5672")
+	viper.SetDefault("rabbitmq.username", "guest")
+	viper.SetDefault("rabbitmq.password", "guest")
+	viper.SetDefault("rabbitmq.timeout", "5s")
+	viper.SetDefault("filename", "data.json")
+
 	//TODO: build default values localhost:5672 no credentials
 	confErr := viper.ReadInConfig()
 	logOnError(confErr, "No configuration file loaded - using defaults {}")
