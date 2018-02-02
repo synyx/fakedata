@@ -119,31 +119,22 @@ func readRabbitConf() rabbitConf {
 	viper.SetDefault("rabbitmq.password", "guest")
 	viper.SetDefault("rabbitmq.timeout", "5s")
 	viper.SetDefault("filename", "data.json")
+	viper.SetDefault("rabbitmq.queries.exchange", "queries")
 
-	//TODO: build default values localhost:5672 no credentials
+	//load config
 	confErr := viper.ReadInConfig()
 	logOnError(confErr, "No configuration file loaded - using defaults {}")
-	hostname := viper.GetString("rabbitmq.hostname")
-	port := viper.GetInt("rabbitmq.port")
-	username := viper.GetString("rabbitmq.username")
-	password := viper.GetString("rabbitmq.password")
-	timeout := viper.GetString("rabbitmq.timeout")
-	filename := viper.GetString("filename")
-	queriesExchange := viper.GetString("rabbitmq.queries.exchange")
-	queriesQueue := viper.GetString("rabbitmq.queries.exchange")
-	queriesRoutingKey := viper.GetString("rabbitmq.queries.routingkey")
-	timeoutDuration, err := time.ParseDuration(timeout)
-	failOnError(err, "failed to parse rabbitmq timeout configuration value")
+
 	return rabbitConf{
-		hostname: hostname,
-		port: port,
-		username: username,
-		password: password,
-		timeout: timeoutDuration,
-		filename: filename,
-		queriesExchange: queriesExchange,
-		queriesQueue: queriesQueue,
-		queriesRoutingKey: queriesRoutingKey,
+		hostname: viper.GetString("rabbitmq.hostname"),
+		port: viper.GetInt("rabbitmq.port"),
+		username: viper.GetString("rabbitmq.username"),
+		password: viper.GetString("rabbitmq.password"),
+		timeout: viper.GetDuration("rabbitmq.timeout"),
+		filename: viper.GetString("filename"),
+		queriesExchange: viper.GetString("rabbitmq.queries.exchange"),
+		queriesQueue: viper.GetString("rabbitmq.queries.queue"),
+		queriesRoutingKey: viper.GetString("rabbitmq.queries.routingkey"),
 	}
 }
 
@@ -174,7 +165,6 @@ func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName str
 	)
 	failOnError(queriesErr, "Failed to declare queries queue")
 
-	//TODO make configurable by users input data
 	bindErr := channel.QueueBind(queriesQueueName, queriesRoutingKey, queriesExchangeName, false, nil)
 	failOnError(bindErr, "Failed to bind queries queue to topic exchange")
 
