@@ -42,4 +42,4 @@ inheriting from the base image defined in this repository.
 
 ## TODO
 * Tests ;-)
-* Improve default configuration settings in case of missing config properties
+* Introduce docker mountpoints for config and data
