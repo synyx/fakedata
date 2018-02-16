@@ -48,16 +48,18 @@ func main() {
 	forever := make(chan bool)
 	answersToSend := make(chan rabbitMqResponse)
 	requestForReconnect := make(chan bool)
-	rabbitReconnect := make(chan *amqp.Channel)
+	rabbitMqReconnect := make(chan *amqp.Channel, 5)
+
 	rabbitmqDeliveryChannel := make(chan rabbitMqDeliveryWithChannel)
 
-	go reconnectRabbit(rabbitConfig, rabbitReconnect, requestForReconnect)
+	go reconnectRabbit(rabbitConfig, rabbitMqReconnect, requestForReconnect)
 	requestForReconnect <- true //initial connect
 
-	//setup rabbitmq artifacts, only to be done once
-	rabbitArtifacts := setupRabbitMqTopicsAndQueues(rabbitReconnect, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
 
-	go consumeFromChannel(rabbitReconnect, rabbitArtifacts, rabbitmqDeliveryChannel)
+	//setup rabbitmq artifacts, only to be done once
+	rabbitArtifacts := setupRabbitMqTopicsAndQueues(rabbitMqReconnect, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
+
+	go consumeFromChannel(rabbitMqReconnect, rabbitArtifacts, rabbitmqDeliveryChannel)
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	go func() {
@@ -85,13 +87,7 @@ func main() {
 					ContentType: "text/plain",
 					Body:        body,
 				})
-			if sendErr != nil {
-				log.Printf("failed to send reply message: %s\n", err)
-				requestForReconnect <- true
-				rabbitChannel := <-rabbitReconnect
-				rabbitMqResponse.channel = rabbitChannel //reassign with received channel
-				answersToSend <- rabbitMqResponse
-			}
+			logOnError(sendErr, "failed to send response")
 		}
 
 	}(content)
@@ -122,8 +118,17 @@ func reconnectRabbit(conf rabbitConf, rabbitReconnectChannel chan *amqp.Channel,
 	for  {
 		<- requestsForReconnect
 
+		rabbitMqErrorListener := make(chan *amqp.Error)
+
+		go func() {
+			amqpError := <-rabbitMqErrorListener
+			log.Println(fmt.Sprintf("amqp error: %s", amqpError))
+			log.Println("will issue request for reconnect")
+			requestsForReconnect <- true
+		}()
+
 		conn := connectRabbit(conf)
-		//conn.NotifyClose()
+		conn.NotifyClose(rabbitMqErrorListener) // connection erros will go here
 		channel, err := conn.Channel()
 		failOnError(err, "Failed to open a channel")
 		rabbitReconnectChannel <- channel // send pointer to rabbit channel to interested parties
