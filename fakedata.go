@@ -27,84 +27,135 @@ type rabbitArtifacts struct {
 	queriesQueueName    string
 }
 
-type rabbitMqDestination struct {
-	destination string
-	routingKey  string
+type rabbitMqResponse struct {
+	destination string //the destination exchange
+	routingKey  string //the routing key to be used
+	channel *amqp.Channel //the channel that is used for sending
+}
+
+type rabbitMqDeliveryWithChannel struct {
+	delivery amqp.Delivery
+	channel *amqp.Channel
 }
 
 func main() {
 	rabbitConfig := readRabbitConf()
-	conn := connectRabbit(rabbitConfig)
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-
+	//read content
 	content, err := ioutil.ReadFile(rabbitConfig.filename)
 	failOnError(err, "failed to read data file")
 
-	rabbitArtifacts := setupRabbitMqTopicsAndQueues(ch, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
-
-	msgs, consumeErr := ch.Consume(
-		rabbitArtifacts.queriesQueueName,
-		"",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	failOnError(consumeErr, "failed to consume messages from queue")
-
 	forever := make(chan bool)
-	answersToSend := make(chan rabbitMqDestination)
+	answersToSend := make(chan rabbitMqResponse)
+	requestForReconnect := make(chan bool)
+	rabbitReconnect := make(chan *amqp.Channel)
+	rabbitmqDeliveryChannel := make(chan rabbitMqDeliveryWithChannel)
+
+	go reconnectRabbit(rabbitConfig, rabbitReconnect, requestForReconnect)
+	requestForReconnect <- true //initial connect
+
+	//setup rabbitmq artifacts, only to be done once
+	rabbitArtifacts := setupRabbitMqTopicsAndQueues(rabbitReconnect, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
+
+	go consumeFromChannel(rabbitReconnect, rabbitArtifacts, rabbitmqDeliveryChannel)
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	go func() {
-		for msg := range msgs {
-			rabbitMqDest, err := extractDestinationAndRoutingKeyFromReplyTo(msg.ReplyTo)
+		for mqDeliveryWithChannel := range rabbitmqDeliveryChannel {
+			rabbitMqResponse, err := extractDestinationAndRoutingKeyFromReplyTo(mqDeliveryWithChannel.delivery.ReplyTo)
+			rabbitMqResponse.channel = mqDeliveryWithChannel.channel
+			rabbitMqDelivery := mqDeliveryWithChannel.delivery
 			logOnError(err, "failed to parse reply-to: %s")
 			if err != nil {
-				msg.Nack(false, false)
+				rabbitMqDelivery.Nack(false, false)
 			} else {
-				log.Println(fmt.Sprintf("received a query message and will send repsonse to %s", rabbitMqDest))
-				answersToSend <- rabbitMqDest
-				msg.Ack(false)
+				log.Println(fmt.Sprintf("received a query message and will send repsonse to %s", rabbitMqResponse))
+				answersToSend <- rabbitMqResponse
+				rabbitMqDelivery.Ack(false)
 			}
 		}
 	}()
 
-	go func(channel *amqp.Channel, body []byte) {
+	go func(body []byte) {
 
 		for {
-			rabbitDest := <-answersToSend
-			sendErr := channel.Publish(rabbitDest.destination, rabbitDest.routingKey, false, false,
+			rabbitMqResponse := <-answersToSend
+			sendErr := rabbitMqResponse.channel.Publish(rabbitMqResponse.destination, rabbitMqResponse.routingKey, false, false,
 				amqp.Publishing{
 					ContentType: "text/plain",
 					Body:        body,
 				})
-			logOnError(sendErr, "failed to send reply message:")
+			if sendErr != nil {
+				log.Printf("failed to send reply message: %s\n", err)
+				requestForReconnect <- true
+				rabbitChannel := <-rabbitReconnect
+				rabbitMqResponse.channel = rabbitChannel //reassign with received channel
+				answersToSend <- rabbitMqResponse
+			}
 		}
 
-	}(ch, content)
-
-	<-forever
-	defer ch.Close()
-	defer conn.Close()
+	}(content)
+	<- forever
 }
 
-func extractDestinationAndRoutingKeyFromReplyTo(replyTo string) (rabbitMqDestination, error) {
+func consumeFromChannel( rabbitReconnectChannel chan *amqp.Channel, rabbitArtifacts rabbitArtifacts, rabbitmqDeliveryChannel chan rabbitMqDeliveryWithChannel)  {
+	for {
+		rabbitChannel := <- rabbitReconnectChannel
+		msgs, consumeErr := rabbitChannel.Consume(
+			rabbitArtifacts.queriesQueueName,
+			"",
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
+
+		failOnError(consumeErr, "failed to consume messages from queue")
+		for rabbitmqDelivery := range msgs  {
+			rabbitmqDeliveryChannel <- rabbitMqDeliveryWithChannel{ rabbitmqDelivery, rabbitChannel}
+		}
+	}
+}
+
+func reconnectRabbit(conf rabbitConf, rabbitReconnectChannel chan *amqp.Channel, requestsForReconnect chan bool) {
+	for  {
+		<- requestsForReconnect
+
+		conn := connectRabbit(conf)
+		//conn.NotifyClose()
+		channel, err := conn.Channel()
+		failOnError(err, "Failed to open a channel")
+		rabbitReconnectChannel <- channel // send pointer to rabbit channel to interested parties
+	}
+}
+
+func connectRabbit(conf rabbitConf) *amqp.Connection {
+	for {
+		conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", conf.username, conf.password, conf.hostname, conf.port))
+		if err == nil && conn != nil {
+			log.Println("connected to rabbitmq")
+			return conn
+		} else {
+			log.Println(fmt.Sprintf("failed to connect to rabbitmq will retry in %d. current cause: %s", conf.timeout, err))
+			time.Sleep(conf.timeout)
+		}
+	}
+}
+
+func extractDestinationAndRoutingKeyFromReplyTo(replyTo string) (rabbitMqResponse, error) {
 	if len(replyTo) == 0 {
-		return rabbitMqDestination{"", ""}, fmt.Errorf("cannot create destination and/or routing key from empty reply-to")
+		return rabbitMqResponse{"", "", nil}, fmt.Errorf("cannot create destination and/or routing key from empty reply-to")
 	}
 
 	if strings.Contains(replyTo, "/") {
 		destinationAndRoutingKey := strings.Split(replyTo, "/")
 		if len(destinationAndRoutingKey) != 2 {
-			return rabbitMqDestination{"", ""}, fmt.Errorf("cannot create destination and/or routing key from reply-to with more than two slashes (/)")
+			return rabbitMqResponse{"", "", nil}, fmt.Errorf("cannot create destination and/or routing key from reply-to with more than two slashes (/)")
 		}
-		return rabbitMqDestination{destinationAndRoutingKey[0], destinationAndRoutingKey[1]}, nil
+		return rabbitMqResponse{destinationAndRoutingKey[0], destinationAndRoutingKey[1], nil}, nil
 	} else {
-		return rabbitMqDestination{replyTo, ""}, nil
+		return rabbitMqResponse{replyTo, "", nil}, nil
 	}
 }
 
@@ -138,20 +189,9 @@ func readRabbitConf() rabbitConf {
 	}
 }
 
-func connectRabbit(conf rabbitConf) *amqp.Connection {
-	for {
-		conn, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", conf.username, conf.password, conf.hostname, conf.port))
-		if err == nil && conn != nil {
-			log.Println("connected to rabbitmq")
-			return conn
-		} else {
-			log.Println(fmt.Sprintf("failed to connect to rabbitmq will retry in %d. current cause: %s", conf.timeout, err))
-			time.Sleep(conf.timeout)
-		}
-	}
-}
 
-func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
+func setupRabbitMqTopicsAndQueues(rabbitReconnect chan *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
+	channel := <- rabbitReconnect
 	exchangeErr := channel.ExchangeDeclare(queriesExchangeName, "topic", true, false, false, false, nil)
 	failOnError(exchangeErr, "failed to declare queries exchange")
 
@@ -170,6 +210,7 @@ func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName str
 
 	log.Println(fmt.Sprintf("created topics and queues %s, %s", queriesQueueName, queriesExchangeName))
 
+	rabbitReconnect <- channel
 	return rabbitArtifacts{queriesExchangeName: queriesExchangeName, queriesQueueName: queriesQueueName}
 }
 
