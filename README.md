@@ -55,4 +55,3 @@ Configuration and data files are need to reside in the same directory as the exe
 
 ## TODO
 * Tests ;-)
-* Introduce docker mountpoints for config and data
