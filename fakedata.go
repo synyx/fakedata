@@ -87,6 +87,10 @@ func main() {
 					ContentType: "text/plain",
 					Body:        body,
 				})
+			if err != nil {
+				requestForReconnect <-true //request a reconnect
+				answersToSend <- rabbitMqResponse //retry until this succeeds
+			}
 			logOnError(sendErr, "failed to send response")
 		}
 
