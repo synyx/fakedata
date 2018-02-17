@@ -19,26 +19,39 @@ Simply call
 go get github.com/rjayasinghe/fakedata
 ```
 
-or get the base docker image to extend it:
-```
-docker pull rjayasinghe/fakedata
-```
-
 or clone the repository and call
 ```
 go build fakedata.go
 ```
 
 ### Configuration
+You will need a configuration file that is named config.properties:
 
-For a sample configuration you can have a look at https://github.com/rjayasinghe/fakedata-orders 
+```
+rabbitmq.port=5672
+rabbitmq.hostname=localhost
+rabbitmq.username=guest
+rabbitmq.password=guest
+rabbitmq.queries.exchange=queries //how the queries exchange is named
+rabbitmq.queries.queue=fakedata.queries //which queue shall be created for this fakedata instance
+rabbitmq.queries.routingkey=orders.all //which routing key is used to bind the created queue
+rabbitmq.timeout=5s //how long to wait after a connection failure
+filename=orders.json //the name of the datafile
+```
+
 
 ### Containerization
 
 If you are running your data consuming application in a container environment it is
-obvious to run this program in a container itself. Please have a look at
-https://github.com/rjayasinghe/fakedata-orders for a sample conatiner definition
-inheriting from the base image defined in this repository.
+obvious to run this program in a container itself.
+
+Configuration and data files are need to reside in the same directory as the executable itself. In a docker-compose scenario you'd mount as volumes like this:
+
+```
+    volumes:
+        - ./docker/fakedata-orders/config.properties:/config.properties
+        - ./docker/fakedata-orders/orders.json:/orders.json
+```
 
 ## TODO
 * Tests ;-)
