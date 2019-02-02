@@ -19,7 +19,7 @@ type rabbitConf struct {
 	queriesExchange   string
 	queriesQueue      string
 	queriesRoutingKey string
-	timeout 		  time.Duration
+	timeout           time.Duration
 }
 
 type rabbitArtifacts struct {
@@ -28,14 +28,14 @@ type rabbitArtifacts struct {
 }
 
 type rabbitMqResponse struct {
-	destination string //the destination exchange
-	routingKey  string //the routing key to be used
-	channel *amqp.Channel //the channel that is used for sending
+	destination string        //the destination exchange
+	routingKey  string        //the routing key to be used
+	channel     *amqp.Channel //the channel that is used for sending
 }
 
 type rabbitMqDeliveryWithChannel struct {
 	delivery amqp.Delivery
-	channel *amqp.Channel
+	channel  *amqp.Channel
 }
 
 func main() {
@@ -54,7 +54,6 @@ func main() {
 
 	go reconnectRabbit(rabbitConfig, rabbitMqReconnect, requestForReconnect)
 	requestForReconnect <- true //initial connect
-
 
 	//setup rabbitmq artifacts, only to be done once
 	rabbitArtifacts := setupRabbitMqTopicsAndQueues(rabbitMqReconnect, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
@@ -88,19 +87,19 @@ func main() {
 					Body:        body,
 				})
 			if err != nil {
-				requestForReconnect <-true //request a reconnect
+				requestForReconnect <- true       //request a reconnect
 				answersToSend <- rabbitMqResponse //retry until this succeeds
 			}
 			logOnError(sendErr, "failed to send response")
 		}
 
 	}(content)
-	<- forever
+	<-forever
 }
 
-func consumeFromChannel( rabbitReconnectChannel chan *amqp.Channel, rabbitArtifacts rabbitArtifacts, rabbitmqDeliveryChannel chan rabbitMqDeliveryWithChannel)  {
+func consumeFromChannel(rabbitReconnectChannel chan *amqp.Channel, rabbitArtifacts rabbitArtifacts, rabbitmqDeliveryChannel chan rabbitMqDeliveryWithChannel) {
 	for {
-		rabbitChannel := <- rabbitReconnectChannel
+		rabbitChannel := <-rabbitReconnectChannel
 		msgs, consumeErr := rabbitChannel.Consume(
 			rabbitArtifacts.queriesQueueName,
 			"",
@@ -112,15 +111,15 @@ func consumeFromChannel( rabbitReconnectChannel chan *amqp.Channel, rabbitArtifa
 		)
 
 		failOnError(consumeErr, "failed to consume messages from queue")
-		for rabbitmqDelivery := range msgs  {
-			rabbitmqDeliveryChannel <- rabbitMqDeliveryWithChannel{ rabbitmqDelivery, rabbitChannel}
+		for rabbitmqDelivery := range msgs {
+			rabbitmqDeliveryChannel <- rabbitMqDeliveryWithChannel{rabbitmqDelivery, rabbitChannel}
 		}
 	}
 }
 
 func reconnectRabbit(conf rabbitConf, rabbitReconnectChannel chan *amqp.Channel, requestsForReconnect chan bool) {
-	for  {
-		<- requestsForReconnect
+	for {
+		<-requestsForReconnect
 
 		rabbitMqErrorListener := make(chan *amqp.Error)
 
@@ -186,21 +185,20 @@ func readRabbitConf() rabbitConf {
 	logOnError(confErr, "No configuration file loaded - using defaults {}")
 
 	return rabbitConf{
-		hostname: viper.GetString("rabbitmq.hostname"),
-		port: viper.GetInt("rabbitmq.port"),
-		username: viper.GetString("rabbitmq.username"),
-		password: viper.GetString("rabbitmq.password"),
-		timeout: viper.GetDuration("rabbitmq.timeout"),
-		filename: viper.GetString("filename"),
-		queriesExchange: viper.GetString("rabbitmq.queries.exchange"),
-		queriesQueue: viper.GetString("rabbitmq.queries.queue"),
+		hostname:          viper.GetString("rabbitmq.hostname"),
+		port:              viper.GetInt("rabbitmq.port"),
+		username:          viper.GetString("rabbitmq.username"),
+		password:          viper.GetString("rabbitmq.password"),
+		timeout:           viper.GetDuration("rabbitmq.timeout"),
+		filename:          viper.GetString("filename"),
+		queriesExchange:   viper.GetString("rabbitmq.queries.exchange"),
+		queriesQueue:      viper.GetString("rabbitmq.queries.queue"),
 		queriesRoutingKey: viper.GetString("rabbitmq.queries.routingkey"),
 	}
 }
 
-
 func setupRabbitMqTopicsAndQueues(rabbitReconnect chan *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
-	channel := <- rabbitReconnect
+	channel := <-rabbitReconnect
 	exchangeErr := channel.ExchangeDeclare(queriesExchangeName, "topic", true, false, false, false, nil)
 	failOnError(exchangeErr, "failed to declare queries exchange")
 
