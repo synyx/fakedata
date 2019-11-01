@@ -42,15 +42,13 @@ func main() {
 			rabbitMqDest, err := extractDestinationAndRoutingKeyFromReplyTo(msg.ReplyTo)
 			logOnError(err, "failed to parse reply-to: %s")
 			if err != nil {
-				if err = msg.Nack(false, false); err != nil {
-					log.Println(fmt.Sprintf("failed to NACK message to %s", rabbitMqDest))
-				}
+				err = msg.Nack(false, false)
+				logOnError(err, fmt.Sprintf("failed to NACK message to %s", rabbitMqDest))
 			} else {
 				log.Println(fmt.Sprintf("received a query message and will send response to %s", rabbitMqDest))
 				answersToSend <- rabbitMqDest
-				if err = msg.Ack(false); err != nil {
-					log.Println(fmt.Sprintf("failed to ack message to to %s", rabbitMqDest))
-				}
+				err = msg.Ack(false)
+				logOnError(err, fmt.Sprintf("failed to ACK message to to %s", rabbitMqDest))
 			}
 		}
 	}()
