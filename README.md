@@ -20,11 +20,13 @@ go get github.com/rjayasinghe/fakedata
 ```
 
 or clone the repository and call
+
 ```
 go build fakedata.go
 ```
 
 ### Configuration
+
 You will need a configuration file that is named config.properties:
 
 ```
@@ -54,4 +56,5 @@ Configuration and data files are need to reside in the same directory as the exe
 ```
 
 ## TODO
+
 * Tests ;-)
