@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/streadway/amqp"
 	"io/ioutil"
 	"log"
+
+	"github.com/streadway/amqp"
 )
 
 func main() {
@@ -79,4 +80,3 @@ func logOnError(err error, msg string) {
 		log.Printf("%s: %s\n", msg, err)
 	}
 }
-

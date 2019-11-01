@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"github.com/streadway/amqp"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/streadway/amqp"
 )
 
 type rabbitConf struct {
@@ -111,4 +112,3 @@ func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName str
 
 	return rabbitArtifacts{queriesExchangeName: queriesExchangeName, queriesQueueName: queriesQueueName}
 }
-
