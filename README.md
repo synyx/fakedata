@@ -34,11 +34,16 @@ rabbitmq.port=5672
 rabbitmq.hostname=localhost
 rabbitmq.username=guest
 rabbitmq.password=guest
-rabbitmq.queries.exchange=queries //how the queries exchange is named
-rabbitmq.queries.queue=fakedata.queries //which queue shall be created for this fakedata instance
-rabbitmq.queries.routingkey=orders.all //which routing key is used to bind the created queue
-rabbitmq.timeout=5s //how long to wait after a connection failure
-filename=orders.json //the name of the datafile
+# how the queries exchange is named
+rabbitmq.queries.exchange=queries
+# which queue shall be created for this fakedata instance
+rabbitmq.queries.queue=fakedata.queries
+# which routing key is used to bind the created queue
+rabbitmq.queries.routingkey=orders.all
+# how long to wait after a connection failure
+rabbitmq.timeout=5s
+# the name of the datafile
+filename=orders.json
 ```
 
 
