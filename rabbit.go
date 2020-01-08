@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"github.com/streadway/amqp"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/streadway/amqp"
 )
 
 type rabbitConf struct {
@@ -67,10 +68,10 @@ func connectRabbit(conf rabbitConf) *amqp.Connection {
 		if err == nil && conn != nil {
 			log.Println("connected to rabbitmq")
 			return conn
-		} else {
-			log.Println(fmt.Sprintf("failed to connect to rabbitmq will retry in %d. current cause: %s", conf.timeout, err))
-			time.Sleep(conf.timeout)
 		}
+
+		log.Println(fmt.Sprintf("failed to connect to rabbitmq will retry in %d. current cause: %s", conf.timeout, err))
+		time.Sleep(conf.timeout)
 	}
 }
 
@@ -85,9 +86,9 @@ func extractDestinationAndRoutingKeyFromReplyTo(replyTo string) (rabbitMqDestina
 			return rabbitMqDestination{"", ""}, fmt.Errorf("cannot create destination and/or routing key from reply-to with more than two slashes (/)")
 		}
 		return rabbitMqDestination{destinationAndRoutingKey[0], destinationAndRoutingKey[1]}, nil
-	} else {
-		return rabbitMqDestination{replyTo, ""}, nil
 	}
+
+	return rabbitMqDestination{replyTo, ""}, nil
 }
 
 func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
@@ -111,4 +112,3 @@ func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName str
 
 	return rabbitArtifacts{queriesExchangeName: queriesExchangeName, queriesQueueName: queriesQueueName}
 }
-

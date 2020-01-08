@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/streadway/amqp"
 	"io/ioutil"
 	"log"
+
+	"github.com/streadway/amqp"
 )
 
 func main() {
@@ -13,9 +14,8 @@ func main() {
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-	defer ch.Close()
-
 	failOnError(err, "Failed to open a channel")
+	defer ch.Close()
 
 	content, err := ioutil.ReadFile(rabbitConfig.filename)
 	failOnError(err, "failed to read data file")
@@ -42,17 +42,18 @@ func main() {
 			rabbitMqDest, err := extractDestinationAndRoutingKeyFromReplyTo(msg.ReplyTo)
 			logOnError(err, "failed to parse reply-to: %s")
 			if err != nil {
-				msg.Nack(false, false)
+				err = msg.Nack(false, false)
+				logOnError(err, fmt.Sprintf("failed to NACK message to %s", rabbitMqDest))
 			} else {
-				log.Println(fmt.Sprintf("received a query message and will send repsonse to %s", rabbitMqDest))
+				log.Println(fmt.Sprintf("received a query message and will send response to %s", rabbitMqDest))
 				answersToSend <- rabbitMqDest
-				msg.Ack(false)
+				err = msg.Ack(false)
+				logOnError(err, fmt.Sprintf("failed to ACK message to to %s", rabbitMqDest))
 			}
 		}
 	}()
 
 	go func(channel *amqp.Channel, body []byte) {
-
 		for {
 			rabbitDest := <-answersToSend
 			sendErr := channel.Publish(rabbitDest.destination, rabbitDest.routingKey, false, false,
@@ -62,7 +63,6 @@ func main() {
 				})
 			logOnError(sendErr, "failed to send reply message:")
 		}
-
 	}(ch, content)
 
 	<-forever
@@ -79,4 +79,3 @@ func logOnError(err error, msg string) {
 		log.Printf("%s: %s\n", msg, err)
 	}
 }
-
