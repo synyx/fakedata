@@ -76,10 +76,12 @@ func connectRabbit(conf rabbitConf) *amqp.Connection {
 }
 
 func extractDestinationAndRoutingKeyFromReplyTo(replyTo string) (rabbitMqDestination, error) {
+	//empty
 	if len(replyTo) == 0 {
 		return rabbitMqDestination{"", ""}, fmt.Errorf("cannot create destination and/or routing key from empty reply-to")
 	}
 
+	//reply_to containing '/': first part is taken as exchange/destination, second part is taken as the routing key
 	if strings.Contains(replyTo, "/") {
 		destinationAndRoutingKey := strings.Split(replyTo, "/")
 		if len(destinationAndRoutingKey) != 2 {
@@ -88,7 +90,8 @@ func extractDestinationAndRoutingKeyFromReplyTo(replyTo string) (rabbitMqDestina
 		return rabbitMqDestination{destinationAndRoutingKey[0], destinationAndRoutingKey[1]}, nil
 	}
 
-	return rabbitMqDestination{replyTo, ""}, nil
+	//plain reply_to (which is sent to default exchange with reply_to as routingkey)
+	return rabbitMqDestination{"", replyTo}, nil
 }
 
 func setupRabbitMqTopicsAndQueues(channel *amqp.Channel, queriesExchangeName string, queriesQueueName string, queriesRoutingKey string) rabbitArtifacts {
