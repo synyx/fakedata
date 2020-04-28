@@ -36,6 +36,9 @@ func readRabbitConf() rabbitConf {
 	viper.SetConfigFile("config.properties")
 	viper.SetConfigType("properties")
 
+	viper.BindEnv("rabbitmq.hostname", "FAKEDATA_RABBITMQ_HOSTNAME")
+	viper.BindEnv("rabbitmq.port", "FAKEDATA_RABBITMQ_PORT")
+
 	//default values suitable for vanilla rabbitmq docker container
 	viper.SetDefault("rabbitmq.hostname", "localhost")
 	viper.SetDefault("rabbitmq.port", "5672")
