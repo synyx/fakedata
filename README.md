@@ -1,5 +1,14 @@
 # Fake Data Provider for RabbitMQ
 
+### Motivation
+
+Imagine you want to run a component of a distributed system in an (more or less) isolated environment. This might be your laptop or CI. In case you are running query/response scenarios over RabbitMQ/AMQP you need components that answer your queries. Of course one could spin up those components itself in a container and use them. But those components have dependencies as well that'd need to be started. In the worst case you need to start the whole distributed system locally. 
+
+FakeData is written to be a generic, configurable provider that enables lightweight response providers.
+
+
+### Technical Details
+
 This small program connects to a given RabbitMQ server, declares a topic where to which it
 binds a queue on which it consumes so called *query messages*. Concrete names for exchange,
 queue and routing key used to bind the queue have to be configured in a file config.properties.
