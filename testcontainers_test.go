@@ -17,7 +17,7 @@ func (g *TestLogConsumer) Accept(l testcontainers.Log) {
 	fmt.Print(string(l.Content))
 }
 
-func TestWithRedis(t *testing.T) {
+func TestWithFakedataAndRabbitmq(t *testing.T) {
 	ctx := context.Background()
 
 	absPath, err := filepath.Abs("./test-data/data.json")
