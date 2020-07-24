@@ -37,10 +37,13 @@ func readRabbitConf() rabbitConf {
 	viper.SetConfigType("properties")
 
 	viper.BindEnv("rabbitmq.hostname", "FAKEDATA_RABBITMQ_HOSTNAME")
+	viper.BindEnv("rabbitmq.username", "FAKEDATA_RABBITMQ_USERNAME")
+	viper.BindEnv("rabbitmq.password", "FAKEDATA_RABBITMQ_PASSWORD")
 	viper.BindEnv("rabbitmq.port", "FAKEDATA_RABBITMQ_PORT")
 	viper.BindEnv("rabbitmq.queries.exchange", "FAKEDATA_RABBITMQ_QUERIES_EXCHANGE")
 	viper.BindEnv("rabbitmq.queries.queue", "FAKEDATA_RABBITMQ_QUERIES_QUEUE")
 	viper.BindEnv("rabbitmq.queries.routingkey", "FAKEDATA_RABBITMQ_QUERIES_ROUTINGKEY")
+	viper.BindEnv("rabbitmq.timeout", "FAKEDATA_RABBITMQ_TIMEOUT")
 	viper.BindEnv("filename", "FAKEDATA_FILENAME")
 
 	//default values suitable for vanilla rabbitmq docker container
