@@ -45,7 +45,8 @@ func TestWithFakedataAndRabbitmq(t *testing.T) {
 
 	fakedataRequest := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context: ".",
+			Dockerfile: "test-Dockerfile",
+			Context:    ".",
 		},
 		Networks: []string{"testnetwork"},
 		Env: map[string]string{
