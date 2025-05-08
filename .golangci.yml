@@ -1,38 +1,43 @@
+version: "2"
 run:
-  deadline: 30m
   tests: true
-
-linters-settings:
-  govet:
-    check-shadowing: true
-  gofmt:
-    simplify: true
-  maligned:
-    suggest-new: true
-  misspell:
-    locale: US
-    ignore-words:
-      - vell
-
 linters:
   enable:
-    - deadcode
     - goconst
     - gocyclo
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
-    - govet
-    - interfacer
-    - maligned
     - misspell
     - nakedret
-    - scopelint
     - staticcheck
-    - stylecheck
     - unconvert
     - unparam
-    - unused
-    - varcheck
     - whitespace
+  settings:
+    misspell:
+      locale: US
+      ignore-rules:
+        - vell
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
