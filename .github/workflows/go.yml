@@ -1,5 +1,14 @@
-name: Go
-on: [push]
+---
+name: go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  # Allow this workflow be reused (for example in the release pipeline)
+  workflow_call:
+
 jobs:
 
   build:
