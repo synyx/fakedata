@@ -3,8 +3,8 @@ module github.com/synyx/fakedata
 go 1.24.0
 
 require (
+	github.com/rabbitmq/amqp091-go v1.1.0
 	github.com/spf13/viper v1.20.1
-	github.com/streadway/amqp v1.1.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 )
 
