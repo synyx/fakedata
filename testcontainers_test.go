@@ -54,8 +54,8 @@ func TestWithFakedataAndRabbitmq(t *testing.T) {
 			"FAKEDATA_RABBITMQ_QUERIES_ROUTINGKEY": "test",
 			"FAKEDATA_FILENAME":                    "/data.json",
 		},
-		BindMounts: map[string]string{
-			absPath: "/data.json",
+		Mounts: testcontainers.ContainerMounts{
+			testcontainers.BindMount(absPath, "/data.json"),
 		},
 	}
 
