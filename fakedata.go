@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	content, err := ioutil.ReadFile(rabbitConfig.filename)
+	content, err := os.ReadFile(rabbitConfig.filename)
 	failOnError(err, "failed to read data file")
 
 	rabbitArtifacts := setupRabbitMqTopicsAndQueues(ch, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
@@ -71,9 +71,9 @@ func main() {
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
-		panic(fmt.Sprintf("%s: %s", msg, err))
 	}
 }
+
 func logOnError(err error, msg string) {
 	if err != nil {
 		log.Printf("%s: %s\n", msg, err)
