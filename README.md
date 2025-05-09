@@ -33,7 +33,7 @@ contents of a file found at the configured filename.
 Simply call 
 
 ```
-go get github.com/rjayasinghe/fakedata
+go get github.com/synyx/fakedata
 ```
 
 or clone the repository and call
