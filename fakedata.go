@@ -71,9 +71,9 @@ func main() {
 func failOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
-		panic(fmt.Sprintf("%s: %s", msg, err))
 	}
 }
+
 func logOnError(err error, msg string) {
 	if err != nil {
 		log.Printf("%s: %s\n", msg, err)
