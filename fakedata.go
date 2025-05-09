@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -17,7 +17,7 @@ func main() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	content, err := ioutil.ReadFile(rabbitConfig.filename)
+	content, err := os.ReadFile(rabbitConfig.filename)
 	failOnError(err, "failed to read data file")
 
 	rabbitArtifacts := setupRabbitMqTopicsAndQueues(ch, rabbitConfig.queriesExchange, rabbitConfig.queriesQueue, rabbitConfig.queriesRoutingKey)
